@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Rainbow Path</title>
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+        background-color: #000;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        font-family: Arial, sans-serif;
+      }
+      canvas {
+        border: 3px solid #000;
+        background-color: #000;
+      }
+      #setupScreen,
+      #gameScreen {
+        position: absolute;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+      }
+      #setupScreen {
+        background-color: rgba(0, 0, 0, 0.8);
+        width: 500px;
+        height: 600px;
+      }
+      #setupScreen input,
+      #setupScreen select,
+      #setupScreen button {
+        margin: 10px;
+      }
+      #score,
+      #controls,
+      #designedBy {
+        position: absolute;
+        color: #fff;
+      }
+      #score {
+        top: 10px;
+        left: 10px;
+        font-size: 24px;
+        font-weight: bold;
+      }
+      #controls {
+        top: 10px;
+        right: 10px;
+        font-size: 24px;
+        font-weight: bold;
+      }
+      #designedBy {
+        bottom: 10px;
+        right: 10px;
+        font-size: 18px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="setupScreen">
+      <h1>Rainbow Path Setup</h1>
+      <label for="characterName">Character Name:</label>
+      <input
+        type="text"
+        id="characterName"
+        placeholder="Enter your name"
+        required
+      />
+
+      <label for="shapeSelect">Choose Shape:</label>
+      <select id="shapeSelect">
+        <option value="rectangle">Rectangle</option>
+        <option value="circle">Circle</option>
+        <option value="triangle">Triangle</option>
+        <option value="star">Star</option>
+      </select>
+
+      <label for="colorPicker">Pick a Color:</label>
+      <input type="color" id="colorPicker" value="#FFFFFF" />
+
+      <button id="startBtn">Start Game</button>
+
+      <!-- Description Section -->
+      <div id="description">
+        <h2>Game Description</h2>
+        <p>
+          Welcome to Rainbow Path by nana kofi fosu! In this game, you will
+          navigate a colorful path with a character of your choice. You can
+          customize your character by choosing its name, shape, and color. Your
+          objective is to avoid falling tiles and score as many points as
+          possible. Each shape offers a different experience, and your character
+          will change shape as you progress.All ages can play Have fun and good
+          luck!
+        </p>
+      </div>
+    </div>
+
+    <div id="gameScreen" style="display: none">
+      <div id="score">Score: 0</div>
+      <div id="controls">
+        <button id="pauseBtn">Pause</button>
+        <button id="quitBtn">Quit</button>
+      </div>
+      <div id="designedBy">Designed by Nana Kofi Fosu</div>
+      <canvas id="gameCanvas" width="500" height="600"></canvas>
+    </div>
+
+    <script>
+      const setupScreen = document.getElementById("setupScreen");
+      const gameScreen = document.getElementById("gameScreen");
+      const canvas = document.getElementById("gameCanvas");
+      const ctx = canvas.getContext("2d");
+      const tileWidth = 100;
+      const tileHeight = 20;
+      let tiles = [];
+      let player = {
+        x: canvas.width / 2 - tileWidth / 2,
+        y: canvas.height - tileHeight - 10,
+        width: tileWidth,
+        height: tileHeight,
+        color: "#FFFFFF",
+        shape: "rectangle",
+      };
+      let rightPressed = false;
+      let leftPressed = false;
+      let score = 0;
+      let paused = false;
+      let difficulty = 0;
+
+      document.getElementById("startBtn").addEventListener("click", startGame);
+      document
+        .getElementById("pauseBtn")
+        .addEventListener("click", togglePause);
+      document
+        .getElementById("quitBtn")
+        .addEventListener("click", () => location.reload());
+
+      function startGame() {
+        const name = document.getElementById("characterName").value;
+        const shape = document.getElementById("shapeSelect").value;
+        const color = document.getElementById("colorPicker").value;
+
+        if (name && shape && color) {
+          player.shape = shape;
+          player.color = color;
+          setupScreen.style.display = "none";
+          gameScreen.style.display = "flex";
+          draw();
+        } else {
+          alert("Please complete all fields.");
+        }
+      }
+
+      function drawPlayer() {
+        ctx.fillStyle = player.color;
+        ctx.beginPath();
+        if (player.shape === "rectangle") {
+          ctx.fillRect(player.x, player.y, player.width, player.height);
+        } else if (player.shape === "circle") {
+          ctx.arc(
+            player.x + player.width / 2,
+            player.y + player.height / 2,
+            player.width / 2,
+            0,
+            Math.PI * 2
+          );
+          ctx.fill();
+        } else if (player.shape === "triangle") {
+          ctx.moveTo(player.x + player.width / 2, player.y);
+          ctx.lineTo(player.x, player.y + player.height);
+          ctx.lineTo(player.x + player.width, player.y + player.height);
+          ctx.closePath();
+          ctx.fill();
+        } else if (player.shape === "star") {
+          const cx = player.x + player.width / 2;
+          const cy = player.y + player.height / 2;
+          const spikes = 5;
+          const outerRadius = player.width / 2;
+          const innerRadius = outerRadius / 2.5;
+          const step = Math.PI / spikes;
+
+          ctx.beginPath();
+          for (let i = 0; i < 2 * spikes; i++) {
+            const radius = i % 2 === 0 ? outerRadius : innerRadius;
+            const x = cx + radius * Math.cos(i * step);
+            const y = cy - radius * Math.sin(i * step);
+            ctx.lineTo(x, y);
+          }
+          ctx.closePath();
+          ctx.fill();
+        }
+        ctx.closePath();
+      }
+
+      function drawTiles() {
+        for (let i = 0; i < tiles.length; i++) {
+          let tile = tiles[i];
+          ctx.fillStyle = tile.color;
+          ctx.fillRect(tile.x, tile.y, tile.width, tile.height);
+        }
+      }
+
+      function updateTiles() {
+        for (let i = 0; i < tiles.length; i++) {
+          let tile = tiles[i];
+          tile.y += 2 + difficulty;
+
+          if (tile.y > canvas.height) {
+            tiles.splice(i, 1);
+            i--;
+            score++;
+            document.getElementById("score").innerText = `Score: ${score}`;
+
+            // Increase difficulty as score increases
+            if (score % 10 === 0) {
+              difficulty++;
+            }
+          }
+
+          // Check collision and decrease score by 2 if hit
+          if (
+            player.x + player.width > tile.x &&
+            player.x < tile.x + tile.width &&
+            player.y + player.height > tile.y &&
+            player.y < tile.y + tile.height
+          ) {
+            score -= 2;
+            document.getElementById("score").innerText = `Score: ${score}`;
+
+            if (score <= 0) {
+              score = 0;
+            }
+          }
+        }
+
+        if (tiles.length < 5 || Math.random() < 0.02 + difficulty * 0.005) {
+          generateTile();
+        }
+      }
+
+      function generateTile() {
+        let x = Math.random() * (canvas.width - tileWidth);
+        let color = `hsl(${Math.random() * 360}, 100%, 50%)`;
+        let tile = {
+          x: x,
+          y: -tileHeight,
+          width: tileWidth,
+          height: tileHeight,
+          color: color,
+        };
+        tiles.push(tile);
+      }
+
+      function updatePlayer() {
+        if (rightPressed && player.x < canvas.width - player.width) {
+          player.x += 5;
+        } else if (leftPressed && player.x > 0) {
+          player.x -= 5;
+        }
+      }
+
+      function aiShapeShift() {
+        for (let i = 0; i < tiles.length; i++) {
+          let tile = tiles[i];
+          if (
+            tile.y + tile.height > player.y &&
+            tile.y < player.y + player.height
+          ) {
+            if (
+              tile.x + tile.width < player.x ||
+              tile.x > player.x + player.width
+            ) {
+              // No collision, no shape shift needed
+              continue;
+            }
+            if (player.shape === "rectangle") {
+              player.shape = "circle";
+            } else if (player.shape === "circle") {
+              player.shape = "triangle";
+            } else if (player.shape === "triangle") {
+              player.shape = "star";
+            } else if (player.shape === "star") {
+              player.shape = "rectangle";
+            }
+          }
+        }
+      }
+
+      function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        if (!paused) {
+          drawTiles();
+          updateTiles();
+          updatePlayer();
+          aiShapeShift();
+        }
+
+        drawPlayer();
+
+        requestAnimationFrame(draw);
+      }
+
+      function togglePause() {
+        paused = !paused;
+        document.getElementById("pauseBtn").innerText = paused
+          ? "Resume"
+          : "Pause";
+      }
+
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowRight") {
+          rightPressed = true;
+        } else if (e.key === "ArrowLeft") {
+          leftPressed = true;
+        }
+      });
+
+      document.addEventListener("keyup", (e) => {
+        if (e.key === "ArrowRight") {
+          rightPressed = false;
+        } else if (e.key === "ArrowLeft") {
+          leftPressed = false;
+        }
+      });
+    </script>
+  </body>
+</html>
